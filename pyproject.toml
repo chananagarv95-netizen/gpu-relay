@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gpu-relay"
+version = "0.1.0"
+description = "Run your project on a friend's GPU laptop: the first friend to press Enter runs it, and the results come back to you."
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Garv Chanana" }]
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Environment :: Console",
+]
+
+[project.scripts]
+gpu-relay = "gpu_relay:main"
+
+[tool.setuptools]
+py-modules = ["gpu_relay"]
