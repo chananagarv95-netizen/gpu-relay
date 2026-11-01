@@ -45,10 +45,11 @@ Close and reopen Command Prompt afterwards. Open Tailscale from the Start menu a
 py -m pip install --upgrade pip
 ```
 
-**C. Install gpu-relay:**
+**C. Install gpu-relay.** Put the file `gpu_relay-0.1.0-py3-none-any.whl` you were sent in your Downloads folder, then:
 ```bat
-py -m pip install https://github.com/chananagarv95-netizen/gpu-relay/archive/refs/heads/main.zip
+py -m pip install "%USERPROFILE%\Downloads\gpu_relay-0.1.0-py3-none-any.whl"
 ```
+Check it with `gpu-relay --version`.
 
 **D. Only if you share an NVIDIA GPU:**
 1. Update the graphics driver with the **NVIDIA App** (nvidia.com/en-us/software/nvidia-app) or from nvidia.com/drivers, then restart.
@@ -90,10 +91,11 @@ echo 'source ~/.gpu-relay/venv/bin/activate' >> ~/.zshrc
 ```
 The last line makes every new Terminal window use this environment.
 
-**C. Install gpu-relay:**
+**C. Install gpu-relay.** Put the file `gpu_relay-0.1.0-py3-none-any.whl` you were sent in your Downloads folder, then:
 ```bash
-pip install https://github.com/chananagarv95-netizen/gpu-relay/archive/refs/heads/main.zip
+pip install ~/Downloads/gpu_relay-0.1.0-py3-none-any.whl
 ```
+Check it with `gpu-relay --version`.
 
 **D. Only if you share your Mac's GPU** (Apple Silicon, M1–M4). PyTorch uses it as device `mps`.
 ```bash
@@ -106,7 +108,7 @@ The check should print `True`.
 ### Linux
 ```bash
 python3 -m venv ~/.gpu-relay/venv && source ~/.gpu-relay/venv/bin/activate
-pip install https://github.com/chananagarv95-netizen/gpu-relay/archive/refs/heads/main.zip
+pip install ~/Downloads/gpu_relay-0.1.0-py3-none-any.whl
 curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up
 ```
 For NVIDIA GPUs, install PyTorch using the selector on pytorch.org.
@@ -165,7 +167,7 @@ Save outputs such as checkpoints, plots and logs into the project folder. Every 
 ### Windows
 ```bat
 py -m pip install --upgrade pip
-py -m pip install --upgrade --force-reinstall https://github.com/chananagarv95-netizen/gpu-relay/archive/refs/heads/main.zip
+py -m pip install --upgrade --force-reinstall "%USERPROFILE%\Downloads\gpu_relay-<new version>-py3-none-any.whl"
 winget upgrade -e --id Tailscale.Tailscale
 winget upgrade -e --id Python.Python.3.12
 ```
@@ -180,7 +182,7 @@ Update the NVIDIA driver from the NVIDIA App.
 ```bash
 source ~/.gpu-relay/venv/bin/activate
 pip install --upgrade pip
-pip install --upgrade --force-reinstall https://github.com/chananagarv95-netizen/gpu-relay/archive/refs/heads/main.zip
+pip install --upgrade --force-reinstall ~/Downloads/gpu_relay-<new version>-py3-none-any.whl
 brew update && brew upgrade python@3.12 && brew upgrade --cask tailscale-app
 ```
 GPU friends also run:
@@ -188,7 +190,7 @@ GPU friends also run:
 pip install --upgrade torch torchvision torchaudio numpy pandas scikit-learn matplotlib tqdm
 ```
 
-Check your version with `gpu-relay --version`.
+For gpu-relay itself, use the new `.whl` file you were sent. Check your version with `gpu-relay --version`.
 
 ---
 
@@ -202,7 +204,8 @@ Check your version with `gpu-relay --version`.
 - **Stopping:** Ctrl+C on the sender stops the job on the friend's laptop.
 - **Job files** stay on the friend's laptop in `~/.gpu-relay/jobs/<job-id>/`. They can delete old ones.
 - **GPU memory:** a laptop RTX 3050 has 4–6 GB. Use small batch sizes and mixed precision (`torch.autocast`).
-- **Without installing:** download `gpu_relay.py` and run `python gpu_relay.py <same arguments>`.
+- **Without installing:** with just the file `gpu_relay.py`, run `python gpu_relay.py <same arguments>`.
+- **Building the install file (maintainer):** `python3 -m pip wheel . --no-deps -w dist` creates `dist/gpu_relay-<version>-py3-none-any.whl`. Bump `version` in `pyproject.toml` and `__version__` in `gpu_relay.py` first.
 - **Tests:** `python3 test_relay.py` runs two workers and a sender on one machine.
 
 ## License
