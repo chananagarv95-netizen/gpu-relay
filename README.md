@@ -1,8 +1,9 @@
 # gpu-relay
 
-**Run your project on a friend's GPU laptop.** Keep a list of friends. When you send a job, every friend who is online and free gets a request on their screen. **The first to press Enter runs it**, and the request disappears for everyone else. Training output streams to you live. When it finishes, that friend presses Enter again and the result files land in your project folder.
+**Run your project on a friend's GPU laptop, or on a whole computer lab.** Keep a list of friends. When you send a job, every friend who is online and free gets a request on their screen. **The first to press Enter runs it**, and the request disappears for everyone else. Training output streams to you live. When it finishes, that friend presses Enter again and the result files land in your project folder.
 
 - **Platforms:** Windows, macOS and Linux, for both sending and sharing a GPU.
+- **Lab mode:** on PCs you have permission to use, jobs run automatically in the background, many at once, with a live dashboard. See [section 5](#5-lab-pcs-automatic-mode).
 - **Size:** one Python file, no dependencies beyond Python itself.
 - **Safety:**
   - Nothing runs without the owner pressing Enter.
@@ -45,9 +46,9 @@ Close and reopen Command Prompt afterwards. Open Tailscale from the Start menu a
 py -m pip install --upgrade pip
 ```
 
-**C. Install gpu-relay.** Put the file `gpu_relay-0.1.0-py3-none-any.whl` you were sent in your Downloads folder, then:
+**C. Install gpu-relay.** Put the file `gpu_relay-0.2.0-py3-none-any.whl` you were sent in your Downloads folder, then:
 ```bat
-py -m pip install "%USERPROFILE%\Downloads\gpu_relay-0.1.0-py3-none-any.whl"
+py -m pip install "%USERPROFILE%\Downloads\gpu_relay-0.2.0-py3-none-any.whl"
 ```
 Check it with `gpu-relay --version`.
 
@@ -91,9 +92,9 @@ echo 'source ~/.gpu-relay/venv/bin/activate' >> ~/.zshrc
 ```
 The last line makes every new Terminal window use this environment.
 
-**C. Install gpu-relay.** Put the file `gpu_relay-0.1.0-py3-none-any.whl` you were sent in your Downloads folder, then:
+**C. Install gpu-relay.** Put the file `gpu_relay-0.2.0-py3-none-any.whl` you were sent in your Downloads folder, then:
 ```bash
-pip install ~/Downloads/gpu_relay-0.1.0-py3-none-any.whl
+pip install ~/Downloads/gpu_relay-0.2.0-py3-none-any.whl
 ```
 Check it with `gpu-relay --version`.
 
@@ -108,7 +109,7 @@ The check should print `True`.
 ### Linux
 ```bash
 python3 -m venv ~/.gpu-relay/venv && source ~/.gpu-relay/venv/bin/activate
-pip install ~/Downloads/gpu_relay-0.1.0-py3-none-any.whl
+pip install ~/Downloads/gpu_relay-0.2.0-py3-none-any.whl
 curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up
 ```
 For NVIDIA GPUs, install PyTorch using the selector on pytorch.org.
@@ -194,6 +195,105 @@ For gpu-relay itself, use the new `.whl` file you were sent. Check your version 
 
 ---
 
+## 5. Lab PCs (automatic mode)
+
+For computers you have **permission** to use, such as college lab PCs. Nobody has to press Enter. Each PC runs one job at a time in the background, and you follow everything from a live dashboard on your Mac.
+
+**What a lab PC does, and what it never does** (useful for the permission letter):
+- **Account:** jobs run as Windows' low-privilege **LOCAL SERVICE** account. That isn't an administrator, so it can't install software or change settings. The admin password is only needed once, to install.
+- **Priority:** jobs run at **below-normal priority**, so a student using the PC comes first.
+- **Folder:** everything lives in `C:\gpu-relay`. Students can't open that folder, so they can't read the token.
+- **Who can send jobs:** only someone with your token, and only over your private Tailscale network. The firewall rule accepts Tailscale addresses (`100.64.0.0/10`) only.
+- **Time limit:** every job has one (default 90 minutes), and it is stopped when that runs out.
+- **Sleep:** the PC is kept awake while a job runs, and normal sleep comes back after.
+- **Pause or remove anytime:** see the end of this section.
+
+### One-time preparation (on your Mac)
+
+1. **Make a lab token** (one password shared by all lab PCs). Keep it secret and never put it on GitHub:
+   ```bash
+   python3 -c "import secrets; print(secrets.token_urlsafe(24))"
+   ```
+2. **Make a Tailscale auth key** so the PCs can join your network without anyone signing in.
+   - Go to login.tailscale.com/admin/settings/keys → **Generate auth key**.
+   - Turn **Reusable** on and leave tags empty. Untagged devices are free and unlimited, while the free plan allows only 50 tagged ones.
+3. **Copy to a pendrive:** `dist/gpu_relay-0.2.0-py3-none-any.whl`, `lab/install-lab-pc.ps1` and `lab/uninstall-lab-pc.ps1`, all in one folder.
+
+### On each lab PC (once, by whoever has the admin password)
+
+1. Plug in the pendrive.
+2. Open **PowerShell as administrator** (Start → type PowerShell → right-click → Run as administrator).
+3. Run:
+   ```powershell
+   cd E:\          # the pendrive's drive letter
+   powershell -ExecutionPolicy Bypass -File .\install-lab-pc.ps1 -Token <lab token> -AuthKey <tskey-auth-...>
+   ```
+
+It takes about 5–10 minutes, mostly downloading PyTorch. It finishes with `OK: {"name": "lab1-pc07", ...}`. The PC's name is its Windows computer name in lower case. The worker then starts by itself at every boot, with no window.
+
+- **Other libraries:** add `-Packages "numpy pandas opencv-python"` to install the libraries your jobs need. The default is numpy, pandas, scikit-learn, matplotlib and tqdm.
+- **"Reset on restart" software** (Deep Freeze, Reboot Restore and similar) wipes everything at each reboot. The lab admin must **thaw** the PC (or exclude `C:\gpu-relay` and the Python, Tailscale and scheduled-task changes) before installing, then freeze it again.
+- **Tailscale re-login:** Tailscale signs devices out after 180 days. To avoid that, on login.tailscale.com/admin/machines open each lab PC's **⋯** menu → **Disable key expiry**.
+- **Same network instead of Tailscale:** if you'll always be on the lab's network, install with `-AllowLan`. Tailscale is still needed to reach the PCs from anywhere else.
+
+### Add the PCs (on your Mac)
+
+```bash
+gpu-relay add-many <lab token> lab1-pc{01..30}       # zsh expands this to lab1-pc01 … lab1-pc30
+gpu-relay friends --to "lab1-*"                       # which ones are online right now
+gpu-relay dashboard --to "lab*"                       # live page: which PCs are online
+```
+
+### Run jobs
+
+Put one command per line in a text file. Each line becomes one job on one free PC:
+```text
+# jobs.txt
+python train.py --lr 0.1
+python train.py --lr 0.01
+python train.py --lr 0.001
+python evaluate.py --fold 1
+```
+```bash
+gpu-relay batch ./my-project jobs.txt --to "lab1-*" --time-limit 90
+```
+
+**The dashboard** opens at http://localhost:8766 and shows:
+- every PC: online and free, running job N, or offline with when it was last seen
+- every job: status, time used against the time limit, progress, and latest output line
+- full output: click a job
+
+Progress is the last `NN%` your program printed. tqdm bars work too.
+
+**When jobs come back:** each job's files arrive as soon as it finishes, in `my-project/relay-results/batch-<date>/job001-lab1-pc07/`. Each job's full output is saved in `job001.log`.
+
+**What happens when things go wrong:**
+
+| Situation | What gpu-relay does |
+|---|---|
+| A student shuts the PC down mid-job | After 5 minutes unreachable (or straight away if the PC restarts), the job runs again on another free PC. It gives up after 3 PCs. |
+| A job reaches `--time-limit` | It is stopped, and the files it saved so far (checkpoints!) come back. Status: `time limit`. |
+| A job crashes | Status: `failed`, with its output in the log. It isn't re-run, since it would only crash again. |
+| Your Mac sleeps or loses Wi-Fi | Lab jobs keep running. When the Mac is back, the batch carries on. |
+| You close the Terminal window | Jobs keep running. Run `gpu-relay batch --resume my-project/relay-results/batch-<date>` to collect them. |
+| You press Ctrl+C | The running jobs are cancelled on the lab PCs. Use `--resume` later to run the unfinished ones again. |
+
+**Fit jobs into a lab session.** Two lectures are about 100 minutes, so the default `--time-limit` is 90. Keep each job well under that, for example a few epochs or one setting per line. Also save a checkpoint into the project folder every epoch, so even a stopped job sends something useful back.
+
+**CPU-only PCs.** Lab PCs usually have no NVIDIA GPU, so PyTorch runs on the CPU, and the device code in section 3 picks `cpu` automatically. One lab i5 is roughly as fast as a MacBook Air. The gain comes from running 30 jobs at once.
+
+### Pause or remove (on the lab PC, as administrator)
+
+```powershell
+Disable-ScheduledTask -TaskName gpu-relay; Stop-ScheduledTask -TaskName gpu-relay    # pause
+Enable-ScheduledTask -TaskName gpu-relay; Start-ScheduledTask -TaskName gpu-relay    # resume
+powershell -ExecutionPolicy Bypass -File .\uninstall-lab-pc.ps1                       # remove everything
+powershell -ExecutionPolicy Bypass -File .\uninstall-lab-pc.ps1 -RemoveTailscale      # ...and Tailscale
+```
+The worker's own log is `C:\gpu-relay\worker.log`.
+
+---
+
 ## Notes
 - **What's uploaded:** the project folder, except `.git`, `node_modules`, `__pycache__`, `.venv`/`venv` and `relay-results`. It goes only to the friend who accepted.
 - **What comes back:** only files the job created or changed, saved in `relay-results/<job-id>/`.
@@ -206,7 +306,7 @@ For gpu-relay itself, use the new `.whl` file you were sent. Check your version 
 - **GPU memory:** a laptop RTX 3050 has 4–6 GB. Use small batch sizes and mixed precision (`torch.autocast`).
 - **Without installing:** with just the file `gpu_relay.py`, run `python gpu_relay.py <same arguments>`.
 - **Building the install file (maintainer):** `python3 -m pip wheel . --no-deps -w dist` creates `dist/gpu_relay-<version>-py3-none-any.whl`. Bump `version` in `pyproject.toml` and `__version__` in `gpu_relay.py` first.
-- **Tests:** `python3 test_relay.py` runs two workers and a sender on one machine.
+- **Tests:** `python3 test_relay.py` (friends, Enter-to-approve) and `python3 test_lab.py` (lab mode: batch, time limit, shut-down PC, resume, Ctrl+C) run workers and a sender on one machine.
 
 ## License
 MIT
