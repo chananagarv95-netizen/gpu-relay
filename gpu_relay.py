@@ -52,7 +52,7 @@ from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 PORT = 8765
 DASHBOARD_PORT = 8766
 SKIP = {".git", "node_modules", "__pycache__", ".venv", "venv", "relay-results", ".DS_Store"}
@@ -64,6 +64,10 @@ LOST_AFTER = float(os.environ.get("GPU_RELAY_LOST_AFTER", 300))  # unreachable t
 MAX_TRIES = 3        # a batch job is given up after failing to finish on this many PCs
 JOB_ID = re.compile(r"^\d{8}-\d{6}-[0-9a-f]{4}")
 MARK = b"__RELAY__ "
+# Job priority -> (Windows priority class, Unix nice value). Raising priority above normal on
+# macOS/Linux needs root, so there "above-normal" runs at normal.
+PRIORITY = {"low": ("BELOW_NORMAL_PRIORITY_CLASS", 10), "normal": (None, 0),
+            "above-normal": ("ABOVE_NORMAL_PRIORITY_CLASS", 0)}
 
 
 def mb(n):
@@ -205,7 +209,7 @@ class Job:
         self.result = zip_path
 
 
-def run_job(job, lab):
+def run_job(job, lab, priority):
     """Run job.command in job.dir with output to job.log. Frees the worker when the command ends."""
     try:
         before = snapshot(job.dir)
@@ -214,15 +218,16 @@ def run_job(job, lab):
         if command == "python" or command.startswith("python "):
             command = f'"{sys.executable}"' + command[len("python"):]
         kw = {}
+        win_class, nice = PRIORITY[priority]
         if os.name == "nt":
             args = command
-            if lab:
-                kw["creationflags"] = subprocess.BELOW_NORMAL_PRIORITY_CLASS
+            if win_class:
+                kw["creationflags"] = getattr(subprocess, win_class)
         else:
             args = shlex.split(command)
             kw["start_new_session"] = True  # so kill_tree can stop the whole job
-            if lab:
-                kw["preexec_fn"] = lambda: os.nice(10)
+            if nice:
+                kw["preexec_fn"] = lambda: os.nice(nice)
         keep_awake(True)
         with open(job.log, "ab") as log:
             try:
@@ -257,6 +262,7 @@ class Worker(BaseHTTPRequestHandler):
     jobs_dir = Path()
     approve_timeout = 180
     lab = False
+    priority = "normal"
     slot = threading.Lock()  # held while a job is running
     tickets = {}  # ticket -> (command, expiry time)
     jobs = {}     # job id -> Job
@@ -295,7 +301,7 @@ class Worker(BaseHTTPRequestHandler):
         path, query = self.route()
         if path == "/status":
             return self.reply(200, {"name": self.name, "gpu": self.gpu, "os": platform.system(), "busy": self.busy(),
-                                    "lab": self.lab, "version": __version__})
+                                    "lab": self.lab, "priority": self.priority, "version": __version__})
         job = self.jobs.get(path.split("/")[-1])
         if path.startswith("/job/") and job:
             return self.job_progress(job, int(query.get("since", 0)))
@@ -354,7 +360,7 @@ class Worker(BaseHTTPRequestHandler):
             upload.unlink(missing_ok=True)
         self.forget_old_jobs()
         job = self.jobs[job_id] = Job(job_id, folder, command, limit)
-        threading.Thread(target=run_job, args=(job, self.lab), daemon=True).start()
+        threading.Thread(target=run_job, args=(job, self.lab, self.priority), daemon=True).start()
         print(f"\n    Running job {job_id}: {command}", flush=True)
         return job
 
@@ -488,10 +494,10 @@ def worker(args):
             token_file.write_text(secrets.token_urlsafe(16))
         token = token_file.read_text().strip()
     Worker.name, Worker.token, Worker.gpu, Worker.lab = args.name, token, gpu_name(), args.lab
-    Worker.jobs_dir, Worker.approve_timeout = jobs, args.approve_timeout
+    Worker.jobs_dir, Worker.approve_timeout, Worker.priority = jobs, args.approve_timeout, args.priority
     if not args.lab:
         threading.Thread(target=read_console, daemon=True).start()
-    mode = ("Lab mode: jobs from anyone with the token run automatically, at low priority."
+    mode = (f"Lab mode: jobs from anyone with the token run automatically, at {args.priority} priority."
             if args.lab else "Each job and each result send needs your Enter.")
     print(f"{time.strftime('%Y-%m-%d %H:%M')} gpu-relay {__version__} worker '{args.name}' on port {args.port}"
           f"\n  {mode}\n  GPU:   {Worker.gpu}\n  token: {token}  (give this to the sender once)"
@@ -1050,7 +1056,9 @@ def main():
     w.add_argument("--jobs", default=str(HOME / "jobs"), help="where jobs run (default ~/.gpu-relay/jobs)")
     w.add_argument("--approve-timeout", type=int, default=180, help="seconds before an unanswered request counts as no")
     w.add_argument("--lab", action="store_true",
-                   help="run jobs automatically at low priority, no Enter needed (lab PCs you may use)")
+                   help="run jobs automatically, no Enter needed (lab PCs you may use)")
+    w.add_argument("--priority", choices=list(PRIORITY), default="normal",
+                   help="CPU priority of jobs (default normal; low = students' programs always come first)")
     w.add_argument("--log", help="write messages to this file instead of the screen (background use)")
     w.set_defaults(fn=worker)
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gpu-relay"
-version = "0.2.0"
+version = "0.2.1"
 description = "Run your project on a friend's GPU laptop: the first friend to press Enter runs it, and the results come back to you."
 readme = "README.md"
 license = { file = "LICENSE" }

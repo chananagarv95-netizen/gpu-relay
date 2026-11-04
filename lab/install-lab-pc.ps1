@@ -10,7 +10,7 @@
 #   4. Creates C:\gpu-relay (jobs, log, token); students cannot read the token
 #   5. Opens port 8765 in the firewall, only for Tailscale addresses (100.64.0.0/10)
 #   6. Adds a scheduled task "gpu-relay" that starts at boot as the low-privilege LOCAL SERVICE account
-#      (not an administrator), at below-normal priority, with no window
+#      (not an administrator), with no window; jobs run at -Priority (default normal)
 # Undo everything with uninstall-lab-pc.ps1.
 
 param(
@@ -19,6 +19,7 @@ param(
     [string] $Name = $env:COMPUTERNAME.ToLower(),
     [string] $Packages = "numpy pandas scikit-learn matplotlib tqdm",
     [string] $Dir = "C:\gpu-relay",
+    [ValidateSet("low", "normal", "above-normal")] [string] $Priority = "normal",  # CPU priority of jobs
     [switch] $AllowLan  # also accept jobs from the same local network, without Tailscale
 )
 $ErrorActionPreference = "Stop"
@@ -87,12 +88,12 @@ Write-Host "6/6 Background task"
 $log = Join-Path $Dir "worker.log"
 $jobs = Join-Path $Dir "jobs"
 $action = New-ScheduledTaskAction -Execute $py -WorkingDirectory $Dir `
-    -Argument "-m gpu_relay worker --lab --name $Name --jobs `"$jobs`" --log `"$log`""
+    -Argument "-m gpu_relay worker --lab --priority $Priority --name $Name --jobs `"$jobs`" --log `"$log`""
 $trigger = New-ScheduledTaskTrigger -AtStartup
 $account = New-ScheduledTaskPrincipal -UserId "NT AUTHORITY\LOCAL SERVICE" -LogonType ServiceAccount
 $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 999 `
     -RestartInterval (New-TimeSpan -Minutes 1) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
-    -StartWhenAvailable -Priority 7
+    -StartWhenAvailable -Priority (@{ "low" = 7; "normal" = 5; "above-normal" = 3 }[$Priority])
 Register-ScheduledTask -TaskName "gpu-relay" -Action $action -Trigger $trigger -Principal $account `
     -Settings $settings -Force | Out-Null
 Stop-ScheduledTask -TaskName "gpu-relay" -ErrorAction SilentlyContinue

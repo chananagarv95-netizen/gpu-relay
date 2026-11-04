@@ -201,7 +201,7 @@ For computers you have **permission** to use, such as college lab PCs. Nobody ha
 
 **What a lab PC does, and what it never does** (useful for the permission letter):
 - **Account:** jobs run as Windows' low-privilege **LOCAL SERVICE** account. That isn't an administrator, so it can't install software or change settings. The admin password is only needed once, to install.
-- **Priority:** jobs run at **below-normal priority**, so a student using the PC comes first.
+- **Priority:** jobs run at **normal priority** by default. They share the CPU fairly with what students run (browser, compiler), and the lab head can pick `low` instead so students always come first. See *Job priority* below.
 - **Folder:** everything lives in `C:\gpu-relay`. Students can't open that folder, so they can't read the token.
 - **Who can send jobs:** only someone with your token, and only over your private Tailscale network. The firewall rule accepts Tailscale addresses (`100.64.0.0/10`) only.
 - **Time limit:** every job has one (default 90 minutes), and it is stopped when that runs out.
@@ -217,7 +217,7 @@ For computers you have **permission** to use, such as college lab PCs. Nobody ha
 2. **Make a Tailscale auth key** so the PCs can join your network without anyone signing in.
    - Go to login.tailscale.com/admin/settings/keys → **Generate auth key**.
    - Turn **Reusable** on and leave tags empty. Untagged devices are free and unlimited, while the free plan allows only 50 tagged ones.
-3. **Copy to a pendrive**, all in one folder: `gpu_relay-0.2.0-py3-none-any.whl` from the [Releases page](https://github.com/chananagarv95-netizen/gpu-relay/releases), plus `lab/install-lab-pc.ps1` and `lab/uninstall-lab-pc.ps1` from this repo.
+3. **Copy to a pendrive**, all in one folder: `gpu_relay-0.2.1-py3-none-any.whl` from the [Releases page](https://github.com/chananagarv95-netizen/gpu-relay/releases), plus `lab/install-lab-pc.ps1` and `lab/uninstall-lab-pc.ps1` from this repo.
 
 ### On each lab PC (once, by whoever has the admin password)
 
@@ -231,6 +231,10 @@ For computers you have **permission** to use, such as college lab PCs. Nobody ha
 
 It takes about 5–10 minutes, mostly downloading PyTorch. It finishes with `OK: {"name": "lab1-pc07", ...}`. The PC's name is its Windows computer name in lower case. The worker then starts by itself at every boot, with no window.
 
+- **Job priority:** add `-Priority low`, `-Priority normal` (the default) or `-Priority above-normal`:
+  - `low`: a student's program always wins the CPU, and jobs get whatever is left. The safest choice.
+  - `normal`: jobs and students share the CPU equally. Fine for light use like a couple of Chrome tabs, browser games or an online compiler; a big offline compile takes a little longer.
+  - `above-normal`: jobs win the CPU. A training job uses every core, so the student's PC can stutter (typing lag, choppy games). Use it only on PCs nobody is sitting at.
 - **Other libraries:** add `-Packages "numpy pandas opencv-python"` to install the libraries your jobs need. The default is numpy, pandas, scikit-learn, matplotlib and tqdm.
 - **"Reset on restart" software** (Deep Freeze, Reboot Restore and similar) wipes everything at each reboot. The lab admin must **thaw** the PC (or exclude `C:\gpu-relay` and the Python, Tailscale and scheduled-task changes) before installing, then freeze it again.
 - **Tailscale re-login:** Tailscale signs devices out after 180 days. To avoid that, on login.tailscale.com/admin/machines open each lab PC's **⋯** menu → **Disable key expiry**.

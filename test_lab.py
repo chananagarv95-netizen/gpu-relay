@@ -32,7 +32,8 @@ def watch(p):
 
 def start_worker(tmp, name, port, lab=True):
     p = subprocess.Popen([sys.executable, RELAY, "worker", "--name", name, "--host", "127.0.0.1", "--port", str(port),
-                          "--jobs", str(tmp / name / "jobs")] + (["--lab"] if lab else []),
+                          "--jobs", str(tmp / name / "jobs")] + (["--lab"] if lab else [])
+                         + (["--priority", "low"] if name == "lab-a" else []),
                          stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
                          env={**os.environ, "GPU_RELAY_TOKEN": "lab-token", "PYTHONUNBUFFERED": "1"})
     watch(p)
@@ -132,9 +133,10 @@ with tempfile.TemporaryDirectory() as tmp:
         assert len(r1) == 1 and r1[0].read_text() == "result 1", r1
         assert list(Path(folder).glob("job003-*/ckpt.txt")), "time-limited job's files did not come back"
         assert not list(Path(folder).glob("job001-*/work.py")), "unchanged files came back"
-        log1 = (Path(folder) / "job001.log").read_text()
-        if os.name != "nt":
-            assert "nice 10" in log1, log1  # jobs run at low priority
+        if os.name != "nt":  # lab-a was started with --priority low, lab-b with the default (normal)
+            for n in (1, 2):
+                want = "nice 10" if jobs_done[n]["pc"] == "lab-a" else "nice 0"
+                assert want in (Path(folder) / f"job00{n}.log").read_text(), (n, jobs_done[n]["pc"])
         assert "Time limit" in (Path(folder) / "job003.log").read_text()
 
         drain(*workers.values())
@@ -183,5 +185,5 @@ with tempfile.TemporaryDirectory() as tmp:
         for w in workers.values():
             w.kill()
 
-print("OK: lab PCs run jobs without Enter at low priority; batch spreads jobs, enforces the time limit and returns "
+print("OK: lab PCs run jobs without Enter at the chosen priority; batch spreads jobs, enforces the time limit and returns "
       "partial files; a PC that shuts down gets its job re-run; --resume and Ctrl+C work; dashboard serves state")
