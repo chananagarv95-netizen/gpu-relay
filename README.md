@@ -46,9 +46,9 @@ Close and reopen Command Prompt afterwards. Open Tailscale from the Start menu a
 py -m pip install --upgrade pip
 ```
 
-**C. Install gpu-relay.** Put the file `gpu_relay-0.2.0-py3-none-any.whl` you were sent in your Downloads folder, then:
+**C. Install gpu-relay** (straight from GitHub; the same command updates it later):
 ```bat
-py -m pip install "%USERPROFILE%\Downloads\gpu_relay-0.2.0-py3-none-any.whl"
+py -m pip install --upgrade https://github.com/chananagarv95-netizen/gpu-relay/archive/refs/heads/main.zip
 ```
 Check it with `gpu-relay --version`.
 
@@ -92,9 +92,9 @@ echo 'source ~/.gpu-relay/venv/bin/activate' >> ~/.zshrc
 ```
 The last line makes every new Terminal window use this environment.
 
-**C. Install gpu-relay.** Put the file `gpu_relay-0.2.0-py3-none-any.whl` you were sent in your Downloads folder, then:
+**C. Install gpu-relay** (straight from GitHub; the same command updates it later):
 ```bash
-pip install ~/Downloads/gpu_relay-0.2.0-py3-none-any.whl
+pip install --upgrade https://github.com/chananagarv95-netizen/gpu-relay/archive/refs/heads/main.zip
 ```
 Check it with `gpu-relay --version`.
 
@@ -109,7 +109,7 @@ The check should print `True`.
 ### Linux
 ```bash
 python3 -m venv ~/.gpu-relay/venv && source ~/.gpu-relay/venv/bin/activate
-pip install ~/Downloads/gpu_relay-0.2.0-py3-none-any.whl
+pip install --upgrade https://github.com/chananagarv95-netizen/gpu-relay/archive/refs/heads/main.zip
 curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up
 ```
 For NVIDIA GPUs, install PyTorch using the selector on pytorch.org.
@@ -168,7 +168,7 @@ Save outputs such as checkpoints, plots and logs into the project folder. Every 
 ### Windows
 ```bat
 py -m pip install --upgrade pip
-py -m pip install --upgrade --force-reinstall "%USERPROFILE%\Downloads\gpu_relay-<new version>-py3-none-any.whl"
+py -m pip install --upgrade --force-reinstall https://github.com/chananagarv95-netizen/gpu-relay/archive/refs/heads/main.zip
 winget upgrade -e --id Tailscale.Tailscale
 winget upgrade -e --id Python.Python.3.12
 ```
@@ -183,7 +183,7 @@ Update the NVIDIA driver from the NVIDIA App.
 ```bash
 source ~/.gpu-relay/venv/bin/activate
 pip install --upgrade pip
-pip install --upgrade --force-reinstall ~/Downloads/gpu_relay-<new version>-py3-none-any.whl
+pip install --upgrade --force-reinstall https://github.com/chananagarv95-netizen/gpu-relay/archive/refs/heads/main.zip
 brew update && brew upgrade python@3.12 && brew upgrade --cask tailscale-app
 ```
 GPU friends also run:
@@ -191,7 +191,7 @@ GPU friends also run:
 pip install --upgrade torch torchvision torchaudio numpy pandas scikit-learn matplotlib tqdm
 ```
 
-For gpu-relay itself, use the new `.whl` file you were sent. Check your version with `gpu-relay --version`.
+Check your version with `gpu-relay --version`. Without internet, install a `.whl` file from the [Releases page](https://github.com/chananagarv95-netizen/gpu-relay/releases) instead: `pip install <file>.whl`.
 
 ---
 
@@ -217,7 +217,7 @@ For computers you have **permission** to use, such as college lab PCs. Nobody ha
 2. **Make a Tailscale auth key** so the PCs can join your network without anyone signing in.
    - Go to login.tailscale.com/admin/settings/keys → **Generate auth key**.
    - Turn **Reusable** on and leave tags empty. Untagged devices are free and unlimited, while the free plan allows only 50 tagged ones.
-3. **Copy to a pendrive:** `dist/gpu_relay-0.2.0-py3-none-any.whl`, `lab/install-lab-pc.ps1` and `lab/uninstall-lab-pc.ps1`, all in one folder.
+3. **Copy to a pendrive**, all in one folder: `gpu_relay-0.2.0-py3-none-any.whl` from the [Releases page](https://github.com/chananagarv95-netizen/gpu-relay/releases), plus `lab/install-lab-pc.ps1` and `lab/uninstall-lab-pc.ps1` from this repo.
 
 ### On each lab PC (once, by whoever has the admin password)
 
